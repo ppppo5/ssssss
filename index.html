@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>내가 만드는 계획표</title>
+  <style>
+    /* 기존 스타일 정의 */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #cac9c9f6;
+    }
+
+    .container {
+      width: 80%;
+      max-width: 1000px;
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .timer, .plan, .completed-plan {
+      margin-bottom: 20px;
+    }
+
+    h2 {
+      color: #333;
+    }
+
+    .time-display {
+      font-size: 2em;
+      font-weight: bold;
+      text-align: center;
+      margin: 20px 0;
+      color: #555;
+    }
+
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      font-size: 1em;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    #startStopButton.start {
+      background-color: #4CAF50;
+      color: white;
+    }
+
+    #startStopButton.stop {
+      background-color: #f44336;
+      color: white;
+    }
+
+    #startStopButton.restart {
+      background-color: #2196F3;
+      color: white;
+    }
+
+    #savePlanButton {
+      background-color: #2196F3;
+      color: white;
+    }
+
+    textarea {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      resize: none;
+      display: none;
+    }
+
+    .saved-plan {
+      margin-top: 10px;
+    }
+
+    .plan-item {
+      margin-bottom: 10px;
+      padding: 5px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      background-color: #f9f9f9;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .check-mark {
+      cursor: pointer;
+      width: 20px;
+      height: 20px;
+      background-color: #ddd;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.3s;
+    }
+
+    .check-mark.checked {
+      background-color: #4CAF50;
+    }
+
+    .check-mark:after {
+      content: '✔';
+      color: white;
+      font-size: 14px;
+      display: none;
+    }
+
+    .check-mark.checked:after {
+      display: block;
+    }
+
+    .section-divider {
+      border-top: 2px solid #b4b2b2;
+      margin: 24px 0;
+    }
+
+    .header-divider {
+      border-top: 2px solid #b4b2b2;
+      margin: 24px 0;
+    }
+
+    .start-stop-container {
+      display: flex;
+      justify-content: center;
+    }
+
+    #startStopButton:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+
+    .completed-plan {
+      display: none;
+      text-align: center;
+      padding: 20px;
+      background-color: #f0f0f0;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+
+    /* 추가된 스타일 */
+    .plan h2 {
+      margin-bottom: 20px; /* 계획 제목과 버튼 사이에 공간 추가 */
+    }
+
+    #startStopButton.hidden {
+      display: none; /* 중지 버튼을 숨길 때 적용 */
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>★★내가 만드는 계획표★★</h1>
+    </header>
+    <div class="header-divider"></div>
+    <section class="timer">
+      <h2>공부 시간</h2>
+      <div class="time-display" id="timeDisplay">00:00:00</div>
+      <div class="start-stop-container">
+        <button id="startStopButton" class="start" disabled title="계획을 추가해주세요">시작</button>
+      </div>
+    </section>
+    <div class="section-divider"></div>
+    <section class="plan">
+      <h2>나의 계획표</h2>
+      <button id="savePlanButton">계획 추가</button>
+      <textarea id="planInput" placeholder="당신의 오늘 계획을 쓰세요..."></textarea>
+      <div class="saved-plan" id="savedPlan"></div>
+    </section>
+    <section class="completed-plan" id="completedPlan">
+      <h2>모든 계획 완료!</h2>
+      <p>축하합니다! 모든 계획을 완료했습니다.</p>
+    </section>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      let timer;
+      let isRunning = false;
+      let seconds = 0;
+      let planCount = 1;
+      const timeDisplay = document.getElementById("timeDisplay");
+      const startStopButton = document.getElementById("startStopButton");
+      const planInput = document.getElementById("planInput");
+      const savePlanButton = document.getElementById("savePlanButton");
+      const savedPlan = document.getElementById("savedPlan");
+      const completedPlan = document.getElementById("completedPlan");
+
+      function formatTime(sec) {
+        let hrs = Math.floor(sec / 3600);
+        let mins = Math.floor((sec % 3600) / 60);
+        let secs = sec % 60;
+        return `${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+      }
+
+      function stopTimer() {
+        clearInterval(timer);
+        isRunning = false;
+        startStopButton.textContent = "재시작";
+        startStopButton.classList.replace("stop", "restart");
+        startStopButton.style.backgroundColor = "#2196F3";
+        savePlanButton.style.display = "block"; // 계획 추가 버튼 표시
+      }
+
+      startStopButton.addEventListener("click", () => {
+        if (isRunning) {
+          stopTimer();
+        } else {
+          timer = setInterval(() => {
+            seconds++;
+            timeDisplay.textContent = formatTime(seconds);
+          }, 1000);
+          isRunning = true;
+          startStopButton.textContent = "중단";
+          startStopButton.classList.replace("start", "stop");
+          startStopButton.style.backgroundColor = "#f44336";
+          savePlanButton.style.display = "none"; // 타이머가 작동 중일 때 계획 추가 버튼 숨기기
+        }
+      });
+
+      savePlanButton.addEventListener("click", () => {
+        if (planInput.style.display === "none" || planInput.style.display === "") {
+          planInput.style.display = "block";
+          savePlanButton.textContent = "계획 저장";
+        } else if (planInput.value.trim() !== "") {
+          const planText = planInput.value.trim();
+          const planItem = document.createElement("div");
+          planItem.classList.add("plan-item");
+          planItem.innerHTML = `
+            <span>계획 ${planCount}:</span> ${planText}
+            <div class="check-mark" onclick="toggleCheck(this)"></div>`;
+          savedPlan.appendChild(planItem);
+          planCount++;
+          planInput.value = "";
+          planInput.style.display = "none";
+          savePlanButton.textContent = "계획 추가";
+          startStopButton.disabled = false;
+        }
+      });
+
+      window.toggleCheck = function (element) {
+        if (isRunning) { // 체크는 타이머가 작동 중일 때만 가능
+          element.classList.toggle("checked");
+          checkAllPlansCompleted();
+        }
+      };
+
+      function checkAllPlansCompleted() {
+        const checkMarks = document.querySelectorAll(".check-mark");
+        const allChecked = Array.from(checkMarks).every((mark) => mark.classList.contains("checked"));
+        completedPlan.style.display = allChecked ? "block" : "none";
+        
+        // 모든 계획이 체크되면 중지 버튼을 숨깁니다.
+        if (allChecked) {
+          startStopButton.classList.add("hidden");
+        } else {
+          startStopButton.classList.remove("hidden");
+        }
+
+        if (allChecked && isRunning) { // 모든 계획 체크 시 타이머 멈춤
+          stopTimer();
+        }
+      }
+    });
+  </script>
+</body>
+</html>
+
